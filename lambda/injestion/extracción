@@ -1,0 +1,72 @@
+import json
+import requests
+import boto3
+import base64
+import io
+import PyPDF2
+
+DOMINIOS_OK = ['enerfuel.com', 'acmefuel.com', 'fueltech.com', 'mwps.com', 'pricesupdate.com', 'lexng.com', 'gmail.com']
+KEYWORDS = ['invoice', 'to date', 'ship to', 'total due', 'price', 'lista']
+
+def lambda_handler(event, context):
+    # --- PASO 1: Token ---
+    auth_url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
+    data = {'client_id': CLIENT_ID, 'scope': 'https://graph.microsoft.com/.default', 'client_secret': CLIENT_SECRET, 'grant_type': 'client_credentials'}
+    token_res = requests.post(auth_url, data=data).json()
+    access_token = token_res.get('access_token')
+    
+    if not access_token:
+        return {"error": "Error de Token"}
+
+    headers = {'Authorization': f'Bearer {access_token}'}
+
+    # --- PASO 2: Carpeta Demo ---
+    folder_url = f"https://graph.microsoft.com/v1.0/users/{USER_EMAIL}/mailFolders/inbox/childFolders"
+    folders = requests.get(folder_url, headers=headers).json().get('value', [])
+    folder_id = next((f['id'] for f in folders if f['displayName'] == "Demo"), None)
+
+    if not folder_id:
+        return {"error": "Carpeta Demo no encontrada"}
+
+    # --- PASO 3: Procesar Mensajes ---
+    messages_url = f"https://graph.microsoft.com/v1.0/users/{USER_EMAIL}/mailFolders/{folder_id}/messages"
+    messages = requests.get(messages_url, headers=headers).json().get('value', [])
+    
+    s3 = boto3.client('s3')
+    count_ok = 0
+    count_garbage = 0
+
+    for msg in messages:
+        sender = msg['from']['emailAddress']['address'].lower()
+        if any(dom in sender for dom in DOMINIOS_OK):
+            msg_id = msg['id']
+            att_url = f"https://graph.microsoft.com/v1.0/users/{USER_EMAIL}/messages/{msg_id}/attachments"
+            attachments = requests.get(att_url, headers=headers).json().get('value', [])
+            
+            for att in attachments:
+                if att['@odata.type'] == '#microsoft.graph.fileAttachment' and att['name'].lower().endswith('.pdf'):
+                    filename = att['name']
+                    raw_content = base64.b64decode(att['contentBytes'])
+                    
+                    try:
+                        pdf_reader = PyPDF2.PdfReader(io.BytesIO(raw_content))
+                        texto_interno = "".join([page.extract_text().lower() for page in pdf_reader.pages])
+                        
+                        if any(k in texto_interno for k in KEYWORDS) or any(k in filename.lower() for k in KEYWORDS):
+                            # VA A INVOICES (Quitamos el emoji ✅)
+                            s3.put_object(Bucket=BUCKET_S3, Key=f"invoices/{filename}", Body=raw_content)
+                            print(f"VALIDO: {filename}")
+                            count_ok += 1
+                        else:
+                            # VA A GARBAGE (Quitamos el emoji 🗑️)
+                            s3.put_object(Bucket=BUCKET_S3, Key=f"garbage/{filename}", Body=raw_content)
+                            print(f"BASURA: {filename}")
+                            count_garbage += 1
+                            
+                    except Exception as e:
+                        print(f"ERROR en {filename}: {str(e)}")
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps(f'Proceso terminado. Invoices: {count_ok}, Garbage: {count_garbage}')
+    }
