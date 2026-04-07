@@ -1,0 +1,144 @@
+CREATE SCHEMA IF NOT EXISTS gold;
+
+-- 1. MAESTROS
+DROP TABLE IF EXISTS gold.product_master;
+CREATE TABLE gold.product_master (
+    pm_sku VARCHAR(20), pm_manid VARCHAR(20), pm_description VARCHAR(100), pm_category VARCHAR(30), pm_material VARCHAR(30), pm_diameter VARCHAR(10), pm_thickness VARCHAR(10), pm_length VARCHAR(10), pm_oum VARCHAR(20), pm_pressure VARCHAR(15), pm_coatfinish VARCHAR(20), pm_connection VARCHAR(20), pm_status VARCHAR(10), pm_branch CHAR(1), pm_leadtimeday INT, _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _data_quality_score DECIMAL(3,2) DEFAULT 1.0
+);
+
+DROP TABLE IF EXISTS gold.vendor_master;
+CREATE TABLE gold.vendor_master (
+    vm_id VARCHAR(10), vm_name VARCHAR(50), vm_payterm VARCHAR(20), vm_freight VARCHAR(10), vm_pregion VARCHAR(30), vm_vendortype VARCHAR(20), vm_contactinfo VARCHAR(50), vm_vendflag CHAR(1), vm_qscode INT, _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _data_quality_score DECIMAL(3,2) DEFAULT 1.0
+);
+
+DROP TABLE IF EXISTS gold.customer_master;
+CREATE TABLE gold.customer_master (
+    cst_id VARCHAR(10), cst_name VARCHAR(50), cst_segment VARCHAR(20), cst_industry VARCHAR(30), cst_region VARCHAR(20), cst_salesrep VARCHAR(30), cst_contype VARCHAR(20), cst_credterms VARCHAR(20), cst_pricetier VARCHAR(10), cst_status VARCHAR(15), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _data_quality_score DECIMAL(3,2) DEFAULT 1.0
+);
+
+DROP TABLE IF EXISTS gold.warehouse_master;
+CREATE TABLE gold.warehouse_master (
+    whs_id VARCHAR(15), whs_branchname VARCHAR(50), whs_address VARCHAR(100), whs_region VARCHAR(30), whs_manager VARCHAR(50), whs_yardtype VARCHAR(30), whs_capunits INT, whs_ophours VARCHAR(20), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _data_quality_score DECIMAL(3,2) DEFAULT 1.0
+);
+
+-- 2. PRECIOS
+DROP TABLE IF EXISTS gold.vendor_price_list;
+CREATE TABLE gold.vendor_price_list (
+    vpl_id VARCHAR(10), vpl_sku VARCHAR(15), vpl_sku2 VARCHAR(10), vpl_effdate DATE, vpl_expdate DATE, vpl_basecost DECIMAL(10,2), vpl_discount_pct DECIMAL(5,2), vpl_netcost DECIMAL(10,2), vpl_freight CHAR(1), vpl_moq INT, vpl_puom VARCHAR(20), vpl_cur VARCHAR(5), vpl_sfi VARCHAR(50), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.customer_price_list;
+CREATE TABLE gold.customer_price_list (
+    cpl_id VARCHAR(10), cpl_pricetier VARCHAR(10), cpl_sku VARCHAR(10), cpl_effdate DATE, cpl_expdate DATE, cpl_listprice DECIMAL(10,2), cpl_discpct DECIMAL(5,2), cpl_contprice DECIMAL(10,2), cpl_floorprice DECIMAL(10,2), cpl_qlogic VARCHAR(20), cpl_apprby VARCHAR(30), cpl_prv VARCHAR(10), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. VENTAS Y COMPRAS
+DROP TABLE IF EXISTS gold.sales_order_header;
+CREATE TABLE gold.sales_order_header (
+    soh_id VARCHAR(15), soh_date DATE, soh_cid VARCHAR(10), soh_rsdate DATE, soh_promdate DATE, soh_ordstatus VARCHAR(20), soh_branch VARCHAR(15), soh_ordersource VARCHAR(15), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.sales_order_line;
+CREATE TABLE gold.sales_order_line (
+    sol_id VARCHAR(15), sol_linenum INT, sol_sku VARCHAR(10), sol_qtyorder INT, sol_qtyshipped INT, sol_backordered INT, sol_unitprice DECIMAL(10,2), sol_unitcost DECIMAL(10,2), sol_margval DECIMAL(10,2), sol_sof CHAR(1), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.purchase_order_header;
+CREATE TABLE gold.purchase_order_header (
+    poh_id VARCHAR(15), poh_venid VARCHAR(10), poh_date DATE, poh_expecdate DATE, poh_buyer VARCHAR(20), poh_branch VARCHAR(15), poh_status VARCHAR(20), poh_poval DECIMAL(12,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.purchase_order_line;
+CREATE TABLE gold.purchase_order_line (
+    pol_po_number VARCHAR(15), pol_line_no INT, pol_sku VARCHAR(10), pol_qty_ordered INT, pol_qty_received INT, pol_qty_open INT, pol_ordered_cost DECIMAL(10,2), pol_landed_cost_e DECIMAL(10,2), pol_moq_flag CHAR(1), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.receiving;
+CREATE TABLE gold.receiving (
+    recv_receipt_id VARCHAR(15), recv_receipt_date DATE, recv_po_number VARCHAR(15), recv_warehouse VARCHAR(15), recv_sku VARCHAR(10), recv_received_qty INT, recv_damaged_qty INT, recv_accepted_qty INT, recv_receiver VARCHAR(20), recv_discrepancy_code VARCHAR(20), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.landed_cost;
+CREATE TABLE gold.landed_cost (
+    lc_receipt_id VARCHAR(15), lc_sku VARCHAR(10), lc_freight DECIMAL(10,2), lc_duty DECIMAL(10,2), lc_handling DECIMAL(10,2), lc_brokerage DECIMAL(10,2), lc_total_landed_cost DECIMAL(10,2), lc_landed_cost_per_unit DECIMAL(10,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. FINANZAS
+DROP TABLE IF EXISTS gold.invoice_header;
+CREATE TABLE gold.invoice_header (
+    ih_id VARCHAR(15), ih_invdate DATE, ih_cstid VARCHAR(10), ih_branch VARCHAR(15), ih_orderid VARCHAR(15), ih_shipto VARCHAR(100), ih_payterms VARCHAR(20), ih_invstatus VARCHAR(15), ih_freightamt DECIMAL(10,2), ih_taxamt DECIMAL(10,2), ih_tiv DECIMAL(12,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.invoice_line;
+CREATE TABLE gold.invoice_line (
+    il_id VARCHAR(15), il_no INT, il_sku VARCHAR(10), il_qtysold INT, il_selluom VARCHAR(20), il_usp DECIMAL(10,2), il_extrev DECIMAL(12,2), il_unicost DECIMAL(10,2), il_actcost DECIMAL(12,2), il_gmv DECIMAL(10,2), il_gmp DECIMAL(5,2), il_salesperson VARCHAR(30), il_projectref VARCHAR(20), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.ar_collections;
+CREATE TABLE gold.ar_collections (
+    ac_customer_id VARCHAR(10), ac_invoice_number VARCHAR(20), ac_invoice_date DATE, ac_due_date DATE, ac_days_outstanding INT, ac_open_balance DECIMAL(15,2), ac_aging_bucket VARCHAR(20), ac_collector VARCHAR(30), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. LOGÍSTICA
+DROP TABLE IF EXISTS gold.inventory_snapshot;
+CREATE TABLE gold.inventory_snapshot (
+    is_date DATE, is_whid VARCHAR(15), is_sku VARCHAR(10), is_qtyhand INT, is_qtyavail INT, is_qtyallocated INT, is_qtyonorder INT, is_qtytransit INT, is_invalue DECIMAL(12,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.inventory_movement;
+CREATE TABLE gold.inventory_movement (
+    mov_id VARCHAR(15), mov_datetime TIMESTAMP, mov_whsid VARCHAR(15), mov_sku VARCHAR(10), mov_type VARCHAR(20), mov_refdoc VARCHAR(20), mov_qty_in INT, mov_qty_out INT, mov_unitcost DECIMAL(10,2), mov_extcost DECIMAL(12,2), mov_perfby VARCHAR(20), mov_recode VARCHAR(30), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.cycle_count;
+CREATE TABLE gold.cycle_count (
+    cnt_id VARCHAR(10), cnt_ate DATE, cnt_whsid VARCHAR(15), cnt_sku VARCHAR(10), cnt_qtysys INT, cnt_qtyphysc INT, cnt_varqty INT, cnt_varval DECIMAL(10,2), cnt_count VARCHAR(20), cnt_approver VARCHAR(30), cnt_cause VARCHAR(30), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.branch_transfer;
+CREATE TABLE gold.branch_transfer (
+    bt_id VARCHAR(10), bt_branch VARCHAR(15), bt_tobranch VARCHAR(15), bt_sku VARCHAR(10), bt_qty INT, bt_requestdate DATE, bt_shipdate DATE, bt_recdate DATE, bt_transcost DECIMAL(10,2), bt_status VARCHAR(20), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. ANALÍTICA
+DROP TABLE IF EXISTS gold.demand_history;
+CREATE TABLE gold.demand_history (
+    dh_sku VARCHAR(10), dh_customer_segment VARCHAR(30), dh_branch VARCHAR(15), dh_period_month DATE, dh_units_sold INT, dh_revenue DECIMAL(15,2), dh_margin DECIMAL(15,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.demand_forecast;
+CREATE TABLE gold.demand_forecast (
+    df_sku VARCHAR(10), df_branch VARCHAR(15), df_forecast_period DATE, df_projected_demand INT, df_confidence_band DECIMAL(5,2), df_forecast_method VARCHAR(30), df_planner_override INT, _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.reorder_policy;
+CREATE TABLE gold.reorder_policy (
+    rp_sku VARCHAR(10), rp_branch VARCHAR(15), rp_min_qty INT, rp_max_qty INT, rp_reorder_point INT, rp_safety_stock INT, rp_lead_time_days INT, rp_service_level_target DECIMAL(5,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. EXCEPCIONES Y KPI
+DROP TABLE IF EXISTS gold.pricing_exceptions;
+CREATE TABLE gold.pricing_exceptions (
+    pe_exception_id VARCHAR(10), pe_date DATE, pe_customer_id VARCHAR(10), pe_sku VARCHAR(10), pe_standard_price DECIMAL(10,2), pe_sold_price DECIMAL(10,2), pe_variance DECIMAL(10,2), pe_approved_by VARCHAR(30), pe_reason VARCHAR(50), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.inventory_exceptions;
+CREATE TABLE gold.inventory_exceptions (
+    ie_exception_id VARCHAR(10), ie_date DATE, ie_warehouse VARCHAR(15), ie_sku VARCHAR(10), ie_issue_type VARCHAR(30), ie_severity VARCHAR(10), ie_owner VARCHAR(20), ie_status VARCHAR(20), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.price_change_history;
+CREATE TABLE gold.price_change_history (
+    pch_sku VARCHAR(10), pch_party VARCHAR(20), pch_price DECIMAL(10,2), pch_newprice DECIMAL(10,2), pch_deltadate DATE, pch_rcode VARCHAR(30), pch_uploaded VARCHAR(20), pch_apprstatus VARCHAR(15), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS gold.branch_performance_summary;
+CREATE TABLE gold.branch_performance_summary (
+    bps_branch VARCHAR(15), bps_revenue DECIMAL(15,2), bps_gross_margin DECIMAL(15,2), bps_inventory_turns DECIMAL(10,2), bps_stockout_pct DECIMAL(5,2), bps_fill_rate DECIMAL(5,2), bps_count_accuracy DECIMAL(5,2), bps_overdue_receivables DECIMAL(15,2), bps_transfer_dependency DECIMAL(5,2), _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. AUDITORÍA (ÚLTIMA TABLA)
+DROP TABLE IF EXISTS gold.user_activity_log;
+CREATE TABLE gold.user_activity_log (
+    ual_change_id VARCHAR(10), ual_table_affected VARCHAR(30), ual_record_id VARCHAR(20), ual_field_changed VARCHAR(30), ual_old_value VARCHAR(50), ual_new_value VARCHAR(50), ual_changed_by VARCHAR(20), ual_changed_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _metadata_load_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
