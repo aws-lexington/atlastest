@@ -1,0 +1,344 @@
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: product_master
+   DESCRIPCIÓN: Carga de datos crudos del maestro de productos.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista en la base de Aurora
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa para evitar duplicados en la estructura
+DROP TABLE IF EXISTS bronze.product_master;
+
+-- 3. Creación de tabla con tipos de datos exactos de la documentación Atlas
+CREATE TABLE bronze.product_master (
+    pm_sku          VARCHAR(20),
+    pm_manid        VARCHAR(20),
+    pm_description  VARCHAR(100),
+    pm_category     VARCHAR(30),
+    pm_material     VARCHAR(30),
+    pm_diameter     VARCHAR(10),
+    pm_tickness     VARCHAR(10), -- Mantenido como 'tickness' según tu imagen
+    pm_length       VARCHAR(10),
+    pm_oum          VARCHAR(20),
+    pm_pressure     VARCHAR(15),
+    pm_coatfinish   VARCHAR(20),
+    pm_connection   VARCHAR(20),
+    pm_status       VARCHAR(10),
+    pm_branch       CHAR(1),     -- Tipo de dato fijo para sucursal
+    pm_leadtimeday  INT          -- Valor numérico para días de entrega
+);
+
+-- Comentario de auditoría para el equipo de Atlas
+COMMENT ON TABLE bronze.product_master IS 'Maestro de productos - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: customer_master
+   DESCRIPCIÓN: Maestro de clientes (Customer Master).
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.customer_master;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.customer_master (
+    cst_id         VARCHAR(10),
+    cst_name       VARCHAR(50),
+    cst_segment    VARCHAR(20),
+    cst_industry   VARCHAR(30),
+    cst_region     VARCHAR(20),
+    cst_salesrep   VARCHAR(30),
+    cst_contype    VARCHAR(20),
+    cst_credterms  VARCHAR(20),
+    cst_pricetier  VARCHAR(10),
+    cst_status     VARCHAR(15)
+);
+
+-- Etiqueta de auditoría
+COMMENT ON TABLE bronze.customer_master IS 'Maestro de clientes - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: warehouse_master
+   DESCRIPCIÓN: Maestro de almacenes y bodegas.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.warehouse_master;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.warehouse_master (
+    whs_id           VARCHAR(15),
+    whs_branchname   VARCHAR(50),
+    whs_address      VARCHAR(100),
+    whs_region       VARCHAR(30),
+    whs_manager      VARCHAR(50),
+    whs_yardtype     VARCHAR(30),
+    whs_capunits     INT,           -- Capacidad en unidades (Entero)
+    whs_ophours      VARCHAR(20)    -- Horas de operación
+);
+
+-- Etiqueta de auditoría
+COMMENT ON TABLE bronze.warehouse_master IS 'Maestro de almacenes - Fuente original (Atlas Project)';
+
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: vendor_pricelist
+   DESCRIPCIÓN: Lista de precios y costos de proveedores.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.vendor_price_list;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.vendor_price_list (
+    vpl_id           VARCHAR(10),
+    vpl_sku          VARCHAR(15),
+    vpl_sku2         VARCHAR(10),
+    vpl_effdate      DATE,            -- Fecha de vigencia inicial
+    vpl_expdate      DATE,            -- Fecha de expiración
+    vpl_basecost     DECIMAL(10,2),   -- Costo base con 2 decimales
+    vpl_discount_pct DECIMAL(5,2),    -- Porcentaje de descuento (ej: 15.50)
+    vpl_netcost      DECIMAL(10,2),   -- Costo neto calculado
+    vpl_freight      CHAR(1),         -- Indicador de flete
+    vpl_moq          INT,             -- Cantidad mínima de pedido
+    vpl_puom         VARCHAR(20),     -- Unidad de medida de compra
+    vpl_cur          VARCHAR(5),      -- Moneda (ej: USD, EUR)
+    vpl_sfi          VARCHAR(50)      -- Información adicional/Suplemento
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.vendor_price_list IS 'Lista de precios de proveedores - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: invoice_header
+   DESCRIPCIÓN: Encabezado de facturas (Invoice Header).
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.invoice_header;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.invoice_header (
+    ih_id           VARCHAR(15),
+    ih_invdate      DATE,            -- Fecha de la factura
+    ih_cstid        VARCHAR(10),     -- ID del cliente (Cruza con customer_master)
+    ih_branch       VARCHAR(15),     -- Sucursal
+    ih_orderid      VARCHAR(15),     -- ID de la orden de compra original
+    ih_shipto       VARCHAR(100),    -- Dirección de envío
+    ih_payterms     VARCHAR(20),     -- Términos de pago
+    ih_invstatus    VARCHAR(15),     -- Estado de la factura
+    ih_freightamt   DECIMAL(10,2),   -- Monto del flete
+    ih_taxamt       DECIMAL(10,2),   -- Monto de impuestos
+    ih_tiv          DECIMAL(12,2)    -- Valor total de la factura (Total Invoice Value)
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.invoice_header IS 'Encabezado de facturas - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: invoice_lines
+   DESCRIPCIÓN: Detalle de líneas de factura.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.invoice_line;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.invoice_line (
+    il_id           VARCHAR(15),    -- ID de la factura (Cruza con invoice_header)
+    il_no           INT,            -- Número de línea (1, 2, 3...)
+    il_sku          VARCHAR(10),    -- ID del producto (Cruza con product_master)
+    il_qtysold      INT,            -- Cantidad vendida
+    il_selluom      VARCHAR(20),    -- Unidad de medida de venta
+    il_usp          DECIMAL(10,2),  -- Unit Selling Price (Precio Unitario)
+    il_extrev       DECIMAL(12,2),  -- Extended Revenue (Ingreso Total)
+    il_unicost      DECIMAL(10,2),  -- Unit Cost (Costo Unitario)
+    il_actcost      DECIMAL(12,2),  -- Actual Cost (Costo Total)
+    il_gmv          DECIMAL(10,2),  -- Gross Margin Value (Valor de Margen Bruto)
+    il_gmp          DECIMAL(5,2),   -- Gross Margin Percentage (Porcentaje)
+    il_salesperson  VARCHAR(30),    -- Vendedor asignado
+    il_projectref   VARCHAR(20)     -- Referencia de proyecto
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.invoice_line IS 'Detalle de líneas de factura - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: inventory_snapshot
+   DESCRIPCIÓN: Estado del inventario por fecha y bodega.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.inventory_snapshot;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.inventory_snapshot (
+    is_date          DATE,            -- Fecha del registro de inventario
+    is_whid          VARCHAR(15),     -- ID de la bodega (Warehouse ID)
+    is_sku           VARCHAR(10),     -- ID del producto (SKU)
+    is_qtyhand       INT,             -- Cantidad física en mano
+    is_qtyavail      INT,             -- Cantidad disponible para venta
+    is_qtyallocated  INT,             -- Cantidad apartada/comprometida
+    is_qtyonorder    INT,             -- Cantidad en órdenes de compra
+    is_qtytransit    INT,             -- Cantidad en tránsito
+    is_invalue       DECIMAL(12,2)    -- Valor monetario del inventario
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.inventory_snapshot IS 'Instantánea de inventario - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: inventory_movements
+   DESCRIPCIÓN: Registro de movimientos de entrada y salida.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.inventory_movement;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.inventory_movement (
+    mov_id        VARCHAR(15),
+    mov_datetime  TIMESTAMP,       -- DATETIME en Aurora se maneja como TIMESTAMP
+    mov_whsid     VARCHAR(15),     -- ID de la bodega
+    mov_sku       VARCHAR(10),     -- ID del producto
+    mov_type      VARCHAR(20),     -- Tipo (Entrada, Salida, Ajuste)
+    mov_refdoc    VARCHAR(20),     -- Documento de referencia (Factura/Guía)
+    mov_qtyin     INT,             -- Cantidad que entra
+    mov_qtyou     INT,             -- Cantidad que sale (qtyout)
+    mov_unitcost  DECIMAL(10,2),   -- Costo unitario del movimiento
+    mov_extcost   DECIMAL(12,2),   -- Costo total (Cantidad * Costo)
+    mov_perfby    VARCHAR(20),     -- Realizado por (Usuario/Sistema)
+    mov_recode    VARCHAR(30)      -- Código de razón (Reason Code)
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.inventory_movement IS 'Movimientos de inventario - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: cycle_count
+   DESCRIPCIÓN: Auditoría y conteo físico de inventario.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa con el nuevo nombre
+DROP TABLE IF EXISTS bronze.cycle_count;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.cycle_count (
+    cnt_id        VARCHAR(10),
+    cnt_ate       DATE,            -- Fecha del conteo
+    cnt_whsid     VARCHAR(15),     -- ID de la bodega
+    cnt_sku       VARCHAR(10),     -- ID del producto (SKU)
+    cnt_qtysys    INT,             -- Cantidad según sistema
+    cnt_qtyphysc  INT,             -- Cantidad física contada
+    cnt_varqty    INT,             -- Variación en cantidad
+    cnt_varval    DECIMAL(10,2),   -- Variación en valor monetario
+    cnt_count     VARCHAR(20),     -- Referencia de lote de conteo
+    cnt_approver  VARCHAR(30),     -- Aprobado por
+    cnt_cause     VARCHAR(30)      -- Causa de la variación
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.cycle_count IS 'Tabla de auditoría de inventario (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: branch_transfers
+   DESCRIPCIÓN: Registro de transferencias entre sucursales.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.branch_transfer;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.branch_transfer (
+    bt_id           VARCHAR(10),
+    bt_branch       VARCHAR(15),     -- Sucursal de origen
+    bt_tobranch     VARCHAR(15),     -- Sucursal de destino
+    bt_sku          VARCHAR(10),     -- ID del producto (SKU)
+    bt_qty          INT,             -- Cantidad a transferir
+    bt_requestdate  DATE,            -- Fecha de solicitud
+    bt_shipdate     DATE,            -- Fecha de envío físico
+    bt_recdate      DATE,            -- Fecha de recepción en destino
+    bt_transcost    DECIMAL(10,2),   -- Costo de transporte/transferencia
+    bt_status       VARCHAR(20)      -- Estado (Pendiente, En tránsito, Recibido)
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.branch_transfer IS 'Transferencias entre sucursales - Fuente original (Atlas Project)';
+
+/* =============================================
+   PROYECTO: ATLAS
+   CAPA: BRONZE
+   OBJETO: purchase_order_header
+   DESCRIPCIÓN: Encabezado de órdenes de compra a proveedores.
+============================================= */
+
+-- 1. Asegurar que el esquema bronze exista
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+-- 2. Limpieza de tabla previa
+DROP TABLE IF EXISTS bronze.purchase_order_header;
+
+-- 3. Creación de tabla con la estructura exacta de la imagen
+CREATE TABLE bronze.purchase_order_header (
+    poh_id           VARCHAR(15),    -- ID de la Orden de Compra
+    poh_venid        VARCHAR(10),    -- ID del Proveedor (Vendor ID)
+    poh_date         DATE,           -- Fecha de emisión de la orden
+    poh_expecdate    DATE,           -- Fecha esperada de recepción
+    poh_buyer        VARCHAR(20),    -- Nombre/ID del comprador
+    poh_branch       VARCHAR(15),    -- Sucursal que solicita
+    poh_status       VARCHAR(20),    -- Estado (Abierta, Cerrada, Cancelada)
+    poh_poval        DECIMAL(12,2)   -- Valor total de la orden (PO Value)
+);
+
+-- Etiqueta de auditoría profesional
+COMMENT ON TABLE bronze.purchase_order_header IS 'Encabezado de órdenes de compra - Fuente original (Atlas Project)';
+
+
+
+
