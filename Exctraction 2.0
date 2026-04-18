@@ -4,18 +4,19 @@ import boto3
 import base64
 import io
 import PyPDF2
-import pandas as pd  # Added for Excel support
+import pandas as pd
 
 # === CONFIGURACIÓN ===
-# Tip: Consider moving these to Configuration > Environment variables
-TENANT_ID = ""
-CLIENT_ID = ""
-CLIENT_SECRET = "" 
-USER_EMAIL = ""
-BUCKET_S3 = "s"
+TENANT_ID = 
+CLIENT_ID = 
+CLIENT_SECRET = 
+USER_EMAIL = 
+BUCKET_S3 =
 
 DOMINIOS_OK = ['enerfuel.com', 'acmefuel.com', 'fueltech.com', 'mwps.com', 'pricesupdate.com', 'lexng.com', 'gmail.com']
-KEYWORDS = ['invoice', 'to date', 'ship to', 'total due', 'price', 'lista']
+
+KEYWORDS_INVOICE = ['invoice', 'to date', 'ship to', 'total due', 'bill to']
+KEYWORDS_PRICE_LIST = ['price list', 'lista de precios', 'wholesale', 'price sheet', 'precio', 'lista']
 
 def lambda_handler(event, context):
     # --- PASO 1: Token ---
@@ -26,9 +27,9 @@ def lambda_handler(event, context):
         'client_secret': CLIENT_SECRET, 
         'grant_type': 'client_credentials'
     }
+    
     token_res = requests.post(auth_url, data=data).json()
     access_token = token_res.get('access_token')
-    
     if not access_token:
         return {"error": "Error de Token", "detalle": token_res}
 
@@ -47,51 +48,72 @@ def lambda_handler(event, context):
     messages = requests.get(messages_url, headers=headers).json().get('value', [])
     
     s3 = boto3.client('s3')
-    count_ok = 0
-    count_garbage = 0
+    counts = {"invoices": 0, "price_lists": 0, "garbage": 0}
+    
+    # NEW: Tracking set to prevent duplicates in the same run
+    processed_files = set()
 
     for msg in messages:
-        sender = msg['from']['emailAddress']['address'].lower()
-        # Stricter domain check
+        sender = msg.get('from', {}).get('emailAddress', {}).get('address', '').lower()
+        
         if any(sender.endswith(dom) for dom in DOMINIOS_OK):
             msg_id = msg['id']
             att_url = f"https://graph.microsoft.com/v1.0/users/{USER_EMAIL}/messages/{msg_id}/attachments"
             attachments = requests.get(att_url, headers=headers).json().get('value', [])
             
             for att in attachments:
-                # Updated filter to include .xlsx
-                filename = att['name'].lower()
+                filename = att['name']
+                filename_lower = filename.lower()
                 is_file = att['@odata.type'] == '#microsoft.graph.fileAttachment'
                 
-                if is_file and filename.endswith(('.pdf', '.xlsx')):
+                # Check for duplication
+                if filename in processed_files:
+                    continue
+                
+                if is_file and filename_lower.endswith(('.pdf', '.xlsx', '.csv')):
                     raw_content = base64.b64decode(att['contentBytes'])
                     texto_interno = ""
                     
                     try:
-                        # Logic for PDF
-                        if filename.endswith('.pdf'):
+                        if filename_lower.endswith('.pdf'):
                             pdf_reader = PyPDF2.PdfReader(io.BytesIO(raw_content))
-                            texto_interno = "".join([page.extract_text().lower() for page in pdf_reader.pages])
+                            texto_interno = "".join([page.extract_text().lower() for page in pdf_reader.pages if page.extract_text()])
                         
-                        # Logic for Excel
-                        elif filename.endswith('.xlsx'):
-                            df = pd.read_excel(io.BytesIO(raw_content))
+                        elif filename_lower.endswith('.xlsx'):
+                            # Try reading with openpyxl engine
+                            df = pd.read_excel(io.BytesIO(raw_content), engine='openpyxl')
                             texto_interno = df.to_string().lower()
                         
-                        # --- LÓGICA DE FILTRADO ---
-                        if any(k in texto_interno for k in KEYWORDS) or any(k in filename for k in KEYWORDS):
-                            s3.put_object(Bucket=BUCKET_S3, Key=f"invoices/{att['name']}", Body=raw_content)
-                            print(f"✅ Válido: {att['name']}")
-                            count_ok += 1
+                        elif filename_lower.endswith('.csv'):
+                            content_str = raw_content.decode('utf-8', errors='ignore')
+                            texto_interno = content_str.lower()
+                        
+                        search_blob = (texto_interno + " " + filename_lower).lower()
+
+                        # --- ROUTING LOGIC ---
+                        # We use the original 'filename' for S3 Key to preserve casing in the bucket
+                        if any(k.lower() in search_blob for k in KEYWORDS_PRICE_LIST):
+                            s3.put_object(Bucket=BUCKET_S3, Key=f"price-lists/{filename}", Body=raw_content)
+                            print(f"🏷️ Price List: {filename}")
+                            counts["price_lists"] += 1
+                        
+                        elif any(k.lower() in search_blob for k in KEYWORDS_INVOICE):
+                            s3.put_object(Bucket=BUCKET_S3, Key=f"invoices/{filename}", Body=raw_content)
+                            print(f"✅ Invoice: {filename}")
+                            counts["invoices"] += 1
+                        
                         else:
-                            s3.put_object(Bucket=BUCKET_S3, Key=f"garbage/{att['name']}", Body=raw_content)
-                            print(f"🗑️ Basura: {att['name']}")
-                            count_garbage += 1
+                            s3.put_object(Bucket=BUCKET_S3, Key=f"garbage/{filename}", Body=raw_content)
+                            print(f"🗑️ Garbage: {filename}")
+                            counts["garbage"] += 1
+                        
+                        # Mark as processed so we don't upload it again if it appears in another email
+                        processed_files.add(filename)
                             
                     except Exception as e:
-                        print(f"⚠️ Error en {att['name']}: {e}")
+                        print(f"⚠️ Error processing {filename}: {e}")
 
     return {
         'statusCode': 200,
-        'body': json.dumps(f'Proceso terminado. Invoices: {count_ok}, Garbage: {count_garbage}')
+        'body': json.dumps(f"Proceso completo. Price Lists: {counts['price_lists']}, Invoices: {counts['invoices']}, Garbage: {counts['garbage']}")
     }
